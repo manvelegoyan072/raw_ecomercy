@@ -11,9 +11,11 @@
    python manage.py migrate
 4. Запустите сервер:
    python manage.py runserver
+5. Создай админа
+   python manage.py createsuperuser
 
 ## Запуск в Docker
-   docker build -t biggeek_api .
-   docker run -p 8000:8000 biggeek_api
+   docker build -t raw_ecommercy .
+   docker run -p 8000:8000 raw_ecommercy
 
 
