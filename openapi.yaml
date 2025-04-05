@@ -1,0 +1,460 @@
+openapi: 3.0.0
+info:
+  title:  REST API
+  description: REST API для интернет-магазина
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000/raw_api
+    description: Локальный сервер разработки
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone_number:
+          type: string
+        address:
+          type: string
+      required:
+        - username
+        - email
+
+    TokenResponse:
+      type: object
+      properties:
+        refresh:
+          type: string
+        access:
+          type: string
+      required:
+        - refresh
+        - access
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+      required:
+        - name
+        - slug
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        image:
+          type: string
+          format: uri
+        price:
+          type: string
+          format: decimal
+        stock:
+          type: integer
+        specifications:
+          type: object
+          additionalProperties: true
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+      required:
+        - name
+        - description
+        - price
+        - stock
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product:
+          $ref: '#/components/schemas/Product'
+        quantity:
+          type: integer
+      required:
+        - product
+        - quantity
+
+    Cart:
+      type: object
+      properties:
+        id:
+          type: integer
+        user:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+      required:
+        - user
+        - created_at
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product:
+          $ref: '#/components/schemas/Product'
+        quantity:
+          type: integer
+        price:
+          type: string
+          format: decimal
+      required:
+        - product
+        - quantity
+        - price
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        user:
+          type: integer
+        status:
+          type: string
+          enum: [pending, processing, shipped, delivered, canceled]
+        created_at:
+          type: string
+          format: date-time
+        total_price:
+          type: string
+          format: decimal
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+      required:
+        - user
+        - status
+        - created_at
+        - total_price
+
+paths:
+  /auth/register/:
+    post:
+      summary: Регистрация нового пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                phone_number:
+                  type: string
+                address:
+                  type: string
+              required:
+                - username
+                - email
+                - password
+      responses:
+        '201':
+          description: Пользователь успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  refresh:
+                    type: string
+                  access:
+                    type: string
+
+  /auth/login/:
+    post:
+      summary: Вход пользователя и получение JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  /auth/token/refresh/:
+    post:
+      summary: Обновление access-токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh:
+                  type: string
+              required:
+                - refresh
+      responses:
+        '200':
+          description: Новый access-токен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access:
+                    type: string
+
+  /auth/me/:
+    get:
+      summary: Получение данных текущего пользователя
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Данные пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /products/:
+    get:
+      summary: Получение списка товаров
+      parameters:
+        - name: page
+          in: query
+          description: Номер страницы
+          schema:
+            type: integer
+        - name: ordering
+          in: query
+          description: Сортировка (price, -price, name)
+          schema:
+            type: string
+        - name: category
+          in: query
+          description: ID категории
+          schema:
+            type: integer
+        - name: price_min
+          in: query
+          description: Минимальная цена
+          schema:
+            type: string
+        - name: price_max
+          in: query
+          description: Максимальная цена
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Список товаров с пагинацией
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  next:
+                    type: string
+                    format: uri
+                  previous:
+                    type: string
+                    format: uri
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+  /products/{id}/:
+    get:
+      summary: Получение детальной информации о товаре
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Детали товара
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+
+  /cart/:
+    get:
+      summary: Получение содержимого корзины
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Корзина пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+
+  /cart/add/:
+    post:
+      summary: Добавление товара в корзину
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product_id:
+                  type: integer
+                quantity:
+                  type: integer
+              required:
+                - product_id
+      responses:
+        '201':
+          description: Товар добавлен в корзину
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItem'
+
+  /cart/update/{item_id}/:
+    put:
+      summary: Обновление количества товара в корзине
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+              required:
+                - quantity
+      responses:
+        '200':
+          description: Обновлённый элемент корзины
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItem'
+
+  /cart/remove/{item_id}/:
+    delete:
+      summary: Удаление товара из корзины
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Товар удалён из корзины
+
+  /orders/:
+    get:
+      summary: Получение списка заказов
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Список заказов пользователя
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+  /orders/create/:
+    post:
+      summary: Создание заказа
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address:
+                  type: string
+      responses:
+        '201':
+          description: Заказ успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
