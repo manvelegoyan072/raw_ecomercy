@@ -15,7 +15,12 @@
    python manage.py createsuperuser
 
 ## Запуск в Docker
+1. 
    docker build -t raw_ecommercy .
+2. 
    docker run -p 8000:8000 raw_ecommercy
+
+##swagger
+http://localhost:8000/swagger/
 
 

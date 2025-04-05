@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_filters',
+    'drf_yasg',
     'accounts.apps.AccountsConfig',
     'products.apps.ProductsConfig',
     'cart.apps.CartConfig',
